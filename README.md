@@ -15,5 +15,5 @@ Common Git Commands -
 > This command will make a commit to the files which are tracked but not updated with remote server.
 
 **git push**
->This command will push the commited content in local to the remote repository.
+>This command will push the commited content in local to the remote repository
 
