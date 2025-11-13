@@ -60,9 +60,16 @@ print(f"The division is : {x/y}")
 5. Ask user for their birth year, current year; compute their age; then compute how many seconds they've lived approximately.
 
 """
-
+birth_year = int(input("Please enter the birth year: "))
+current_year = int(input("Please enter the current year: "))
+total_years = current_year - birth_year
+print("Total seconds you have lived till this years - "+ str(total_years * 365 * 24 * 60 * 60))
 
 
 """
 6. Write a small “unit converter” script: user inputs value + unit (e.g., “10 km”), and converts it to a different unit (e.g., miles) using appropriate logic and formatting.
 """
+
+print("This is about converting Kilometers to meters")
+km_value = int(input("Please enter value for Kilometers - "))
+print("The converted value of kilometers into meters is - "+ str(km_value * 1000))
