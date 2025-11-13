@@ -1,14 +1,31 @@
-repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
-    hooks:
-      - id: check-yaml
-      - id: check-added-large-files
-      - id: check-merge-conflict
-      - id: pretty-format-json
-      - id: end-of-file-fixer
+name: Python Syntax Check
 
-  - repo: https://github.com/psf/black
-    rev: 24.3.0
-    hooks:
-      - id: black
+on:
+  push:
+  pull_request:
+
+jobs:
+  syntax_check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Check .py syntax
+        run: |
+          find . -name "*.py" -print0 | xargs -0 -n1 python -m py_compile
+
+      - name: Check .ipynb syntax
+        run: |
+          pip install nbconvert
+          for file in $(find . -name "*.ipynb"); do
+            echo "Checking $file"
+            jupyter nbconvert --to script "$file"
+            python -m py_compile "${file%.ipynb}.py"
+          done
