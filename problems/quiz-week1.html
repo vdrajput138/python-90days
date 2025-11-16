@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Local Python Quiz</title>
+<style>
+  :root{
+    --bg:#0f1724; --card:#0b1220; --muted:#9aa4b2; --accent:#60a5fa; --good:#34d399; --bad:#fb7185;
+    --glass: rgba(255,255,255,0.03);
+    --radius:14px;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(600px 400px at 10% 20%, rgba(96,165,250,0.06), transparent 10%),
+      radial-gradient(600px 400px at 90% 80%, rgba(52,211,153,0.03), transparent 10%),
+      var(--bg);
+    color:#e6eef8;
+    padding:28px;
+  }
+  .wrap{
+    width:100%; max-width:920px; background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent 30%); border-radius:18px; padding:22px;
+    box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+  }
+  header{display:flex; gap:16px; align-items:center; margin-bottom:18px;}
+  h1{font-size:20px; margin:0}
+  p.lead{margin:0; color:var(--muted); font-size:13px}
+  .controls{display:flex; gap:8px; margin:14px 0 24px; flex-wrap:wrap;}
+  button, .file-label{
+    border:0; background:var(--glass); color:var(--accent); padding:10px 12px; border-radius:10px; cursor:pointer; font-weight:600;
+  }
+  button.primary{background:linear-gradient(90deg,var(--accent), #3b82f6); color:#04172a;}
+  button.ghost{background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,0.04)}
+  input[type=file]{display:none}
+  .card{background:rgba(255,255,255,0.02); padding:20px; border-radius:var(--radius); display:flex; gap:18px; align-items:flex-start;}
+  .left{flex:1}
+  .meta{display:flex; gap:12px; align-items:center; margin-bottom:10px}
+  .meta .pill{background:rgba(255,255,255,0.03); padding:8px 10px; border-radius:999px; color:var(--muted); font-size:13px}
+  .question{font-size:18px; line-height:1.4; color:#eaf5ff}
+  .answer{margin-top:18px; background:rgba(255,255,255,0.02); padding:12px; border-radius:12px; color:var(--muted); display:none; white-space:pre-wrap;}
+  .actions{display:flex; gap:10px; margin-top:16px}
+  .big{font-weight:700; font-size:15px; padding:12px 14px; border-radius:12px}
+  .knew{background:linear-gradient(90deg,var(--good), #10b981); color:#012018}
+  .wrong{background:linear-gradient(90deg,var(--bad), #ef4444); color:#2b0508}
+  .small-ui{display:flex; gap:8px; align-items:center; margin-left:auto}
+  .progress-wrap{width:240px; background:rgba(255,255,255,0.02); border-radius:999px; height:12px; overflow:hidden}
+  .progress-bar{height:100%; background:linear-gradient(90deg,var(--accent), #7dd3fc); width:0%}
+  footer{display:flex; gap:8px; align-items:center; margin-top:14px; justify-content:space-between}
+  .stats{color:var(--muted); font-size:13px}
+  .options{display:flex; gap:10px; flex-wrap:wrap;}
+  .tog{padding:8px 10px; border-radius:8px; background:transparent; border:1px solid rgba(255,255,255,0.03); color:var(--muted); cursor:pointer}
+  .hidden{display:none}
+  .right{width:300px}
+  .right h3{margin-top:0; margin-bottom:10px; font-size:14px}
+  .list{max-height:360px; overflow:auto; padding:8px; background:rgba(255,255,255,0.01); border-radius:10px}
+  .list-item{padding:10px; border-radius:8px; margin-bottom:8px; background:rgba(255,255,255,0.01); font-size:13px; display:flex; gap:8px; align-items:center; justify-content:space-between}
+  .tag{font-size:12px; color:var(--muted)}
+  .muted{color:var(--muted); font-size:13px}
+  .footer-actions button{padding:8px 10px; border-radius:8px; background:transparent; border:1px solid rgba(255,255,255,0.03); color:var(--muted)}
+  @media (max-width:880px){ .card{flex-direction:column} .right{width:100%} .small-ui{display:none} .progress-wrap{width:140px} }
+</style>
+</head>
+<body>
+  <div class="wrap" role="application">
+    <header>
+      <div>
+        <h1>Local Python Quiz</h1>
+        <p class="lead">Flashcard-style quiz with CSV import, scoring and review. Works fully offline.</p>
+      </div>
+      <div class="small-ui">
+        <div class="pill muted" id="modePill">Mode: Study</div>
+      </div>
+    </header>
+
+    <div class="controls">
+      <button id="startBtn" class="primary">Start / Resume</button>
+      <button id="shuffleBtn" class="ghost">Shuffle</button>
+      <label class="file-label" title="Load CSV or TSV">
+        Load CSV/TSV
+        <input id="fileInput" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" />
+      </label>
+      <button id="reviewWrongBtn" class="ghost">Review Wrong Only</button>
+      <button id="resetBtn" class="ghost">Reset Progress</button>
+      <div style="margin-left:auto" class="options">
+        <button class="tog" id="autoAdvanceToggle">Auto-advance: Off</button>
+        <button class="tog" id="shuffleOnStart">Shuffle on Start</button>
+      </div>
+    </div>
+
+    <div class="card" aria-live="polite">
+      <div class="left">
+        <div class="meta">
+          <div class="pill" id="qIndex">0 / 0</div>
+          <div class="pill" id="scorePill">Score: 0</div>
+          <div class="pill" id="remainingPill">Remaining: 0</div>
+          <div class="pill" id="knownPill">Known: 0</div>
+        </div>
+
+        <div class="question" id="question">Load or start to begin the quiz.</div>
+        <div class="answer" id="answer"></div>
+
+        <div class="actions">
+          <button id="revealBtn" class="big">Show answer</button>
+          <button id="knewBtn" class="big knew">I knew it</button>
+          <button id="wrongBtn" class="big wrong">I was wrong</button>
+        </div>
+      </div>
+
+      <div class="right" aria-hidden="false">
+        <h3>Progress</h3>
+        <div class="list">
+          <div class="list-item"><div class="tag">Total</div><div id="totalCount">0</div></div>
+          <div class="list-item"><div class="tag">Seen</div><div id="seenCount">0</div></div>
+          <div class="list-item"><div class="tag">Known</div><div id="knownCount">0</div></div>
+          <div class="list-item"><div class="tag">Wrong</div><div id="wrongCount">0</div></div>
+          <div class="list-item"><div class="tag">Current Mode</div><div id="modeLabel">Study</div></div>
+        </div>
+
+        <footer style="margin-top:10px">
+          <div class="stats" id="statsSmall">No quiz running</div>
+        </footer>
+      </div>
+    </div>
+
+    <footer>
+      <div class="muted">Tip: You can import CSV/TSV (Q,A). Use "Review Wrong Only" to re-run missed cards.</div>
+      <div class="footer-actions">
+        <button id="exportWrong">Export Wrong (CSV)</button>
+        <button id="exportAll">Export All (CSV)</button>
+      </div>
+    </footer>
+  </div>
+
+<script>
+/* Preloaded questions (30 items). Each item: {q, a} */
+const defaultQuestions = [
+  {q:"Python code must be compiled before running. True/False?", a:"False."},
+  {q:"What does “interpreted language” mean?", a:"Code executes line by line without prior compilation."},
+  {q:"Command to install via pip?", a:"pip install package_name"},
+  {q:"What does PATH allow you to do?", a:"Run Python from any folder."},
+  {q:"Purpose of a virtual environment?", a:"Isolate project-specific dependencies."},
+  {q:"Which is NOT an editor: PyCharm, VS Code, Terminal, IDLE?", a:"Terminal"},
+  {q:"What is dynamic typing?", a:"Variables can change type at runtime."},
+  {q:"Does \"x = '5' + 2\" work?", a:"No, TypeError."},
+  {q:"type(3.0) returns?", a:"<class 'float'>"},
+  {q:"Which assignment is valid? my_var = 10", a:"my_var = 10"},
+  {q:"Difference between / and //?", a:"/ gives float, // gives integer floor."},
+  {q:"Result of 5 % 2?", a:"1"},
+  {q:"Are strings iterable?", a:"Yes"},
+  {q:"Output of \"abc\" * 3?", a:"abcabcabc"},
+  {q:"Which method checks digits? .isdigit()", a:".isdigit()"},
+  {q:"len(\"Hello World\") returns?", a:"11"},
+  {q:"Slice to reverse s?", a:"s[::-1]"},
+  {q:"\"Hello\".lower() returns?", a:"hello"},
+  {q:"None == False?", a:"False"},
+  {q:"Result of True and (False or True)?", a:"True"},
+  {q:"Which has higher precedence: and or or?", a:"and"},
+  {q:"What does not 0 return?", a:"True"},
+  {q:"What does 'is' compare?", a:"Identity (memory address)"},
+  {q:"Is [] truthy or falsy?", a:"Falsy"},
+  {q:"Condition to check negative number?", a:"x < 0"},
+  {q:"elif can exist without else?", a:"True"},
+  {q:"Error in code with missing indentation?", a:"Missing indentation"},
+  {q:"What does the code print when x=0?", a:"no"},
+  {q:"Describe elif.", a:"Checks additional conditions after if."},
+  {q:"Condition to check age not equal 18", a:"age != 18"}
+];
+
+let deck = [];      // array of {q,a,seen,known,wrong,index}
+let order = [];     // indexes in current order
+let current = 0;    // pointer into order
+let autoAdvance = false;
+let shuffleOnStart = true;
+let mode = 'Study'; // 'Study' or 'ReviewWrong'
+const STORAGE_KEY = 'local-python-quiz-v1';
+
+/* DOM refs */
+const qEl = document.getElementById('question');
+const aEl = document.getElementById('answer');
+const qIndex = document.getElementById('qIndex');
+const scorePill = document.getElementById('scorePill');
+const remainingPill = document.getElementById('remainingPill');
+const knownPill = document.getElementById('knownPill');
+const totalCount = document.getElementById('totalCount');
+const seenCount = document.getElementById('seenCount');
+const knownCount = document.getElementById('knownCount');
+const wrongCount = document.getElementById('wrongCount');
+const modeLabel = document.getElementById('modeLabel');
+const statsSmall = document.getElementById('statsSmall');
+
+const revealBtn = document.getElementById('revealBtn');
+const knewBtn = document.getElementById('knewBtn');
+const wrongBtn = document.getElementById('wrongBtn');
+const startBtn = document.getElementById('startBtn');
+const shuffleBtn = document.getElementById('shuffleBtn');
+const fileInput = document.getElementById('fileInput');
+const reviewWrongBtn = document.getElementById('reviewWrongBtn');
+const resetBtn = document.getElementById('resetBtn');
+const autoAdvanceToggle = document.getElementById('autoAdvanceToggle');
+const shuffleOnStartBtn = document.getElementById('shuffleOnStart');
+const exportWrong = document.getElementById('exportWrong');
+const exportAll = document.getElementById('exportAll');
+
+/* helpers */
+function persist() {
+  const saved = { deck, order, current, autoAdvance, shuffleOnStart, mode };
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(saved)); }catch(e){}
+}
+
+function loadSaved(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    const s = JSON.parse(raw);
+    deck = s.deck || []; order = s.order || []; current = s.current || 0;
+    autoAdvance = !!s.autoAdvance; shuffleOnStart = !!s.shuffleOnStart; mode = s.mode || 'Study';
+    return true;
+  }catch(e){ return false; }
+}
+
+function buildOrder(){
+  order = deck.map((_,i)=>i);
+  if(shuffleOnStart) shuffle(order);
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+}
+
+function resetDeckFromArray(arr){
+  deck = arr.map((it,i)=>({
+    q: it.q, a: it.a, seen:false, known:false, wrong:false, index:i
+  }));
+  buildOrder();
+  current = 0;
+  mode = 'Study';
+  persist();
+  renderState();
+}
+
+function loadDefault(){
+  resetDeckFromArray(defaultQuestions);
+}
+
+/* UI actions */
+function renderState(){
+  const total = deck.length;
+  totalCount.textContent = total;
+  const seen = deck.filter(x=>x.seen).length;
+  seenCount.textContent = seen;
+  const known = deck.filter(x=>x.known).length;
+  knownCount.textContent = known;
+  const wrong = deck.filter(x=>x.wrong).length;
+  wrongCount.textContent = wrong;
+  modeLabel.textContent = mode;
+  qIndex.textContent = (deck.length? (current+1) + ' / ' + order.length : '0 / 0');
+  const score = known;
+  scorePill.textContent = 'Known: ' + score;
+  remainingPill.textContent = 'Remaining: ' + (order.length - current);
+  knownPill.textContent = 'Known: ' + known;
+  statsSmall.textContent = `Deck: ${total} • Seen: ${seen} • Known: ${known} • Wrong: ${wrong}`;
+  // show current card
+  if(deck.length && order[current] !== undefined){
+    const idx = order[current];
+    const card = deck[idx];
+    qEl.textContent = card.q;
+    aEl.textContent = card.a;
+    aEl.style.display = 'none';
+    revealBtn.disabled = false;
+    knewBtn.disabled = false;
+    wrongBtn.disabled = false;
+  } else {
+    qEl.textContent = 'No cards loaded. Click Load CSV/TSV or Start to load the default deck.';
+    aEl.style.display = 'none';
+    aEl.textContent = '';
+    revealBtn.disabled = true;
+    knewBtn.disabled = true;
+    wrongBtn.disabled = true;
+  }
+}
+
+function markKnown(isKnown){
+  if(!deck.length) return;
+  const idx = order[current];
+  deck[idx].seen = true;
+  deck[idx].known = !!isKnown;
+  deck[idx].wrong = !isKnown;
+  // advance pointer
+  current++;
+  if(current >= order.length){
+    // finished
+    current = order.length; // stay at end
+    renderEnd();
+  } else {
+    if(autoAdvance) {
+      // reveal is off for next card
+      renderState();
+    } else {
+      renderState();
+    }
+  }
+  persist();
+}
+
+function renderEnd(){
+  renderState();
+  qEl.textContent = 'You reached the end of this run.';
+  aEl.style.display = 'none';
+  revealBtn.disabled = true;
+  knewBtn.disabled = true;
+  wrongBtn.disabled = true;
+  // small summary
+  const known = deck.filter(d=>d.known).length;
+  const wrong = deck.filter(d=>d.wrong).length;
+  statsSmall.textContent = `Done — Known: ${known} • Wrong: ${wrong}. Use "Review Wrong Only" to retry missed cards.`;
+}
+
+/* Events */
+revealBtn.addEventListener('click', ()=>{
+  aEl.style.display = 'block';
+});
+
+knewBtn.addEventListener('click', ()=>{
+  markKnown(true);
+});
+
+wrongBtn.addEventListener('click', ()=>{
+  markKnown(false);
+});
+
+startBtn.addEventListener('click', ()=>{
+  if(!deck.length){
+    loadDefault();
+  }
+  if(shuffleOnStart) buildOrder();
+  current = 0;
+  mode = 'Study';
+  persist();
+  renderState();
+});
+
+shuffleBtn.addEventListener('click', ()=>{
+  if(!deck.length) return;
+  shuffle(order);
+  current = 0;
+  persist();
+  renderState();
+});
+
+fileInput.addEventListener('change', (ev)=>{
+  const f = ev.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    const text = e.target.result;
+    const parsed = parseCSVorTSV(text);
+    if(parsed.length){
+      resetDeckFromArray(parsed);
+      alert(`Loaded ${parsed.length} cards from file.`);
+    } else {
+      alert('No valid cards found in the file. Ensure first column=Question, second=Answer.');
+    }
+  };
+  reader.readAsText(f);
+});
+
+reviewWrongBtn.addEventListener('click', ()=>{
+  const wrongCards = deck.filter(d=>d.wrong || (!d.known && d.seen)).map(d=>({q:d.q,a:d.a}));
+  if(wrongCards.length===0){
+    alert('No wrong/needs-review cards found.');
+    return;
+  }
+  resetDeckFromArray(wrongCards);
+  mode = 'ReviewWrong';
+  persist();
+  renderState();
+});
+
+resetBtn.addEventListener('click', ()=>{
+  if(confirm('Reset all progress and load default deck?')) {
+    loadDefault();
+    persist();
+    renderState();
+  }
+});
+
+autoAdvanceToggle.addEventListener('click', ()=>{
+  autoAdvance = !autoAdvance;
+  autoAdvanceToggle.textContent = 'Auto-advance: ' + (autoAdvance? 'On' : 'Off');
+  persist();
+});
+
+shuffleOnStartBtn.addEventListener('click', ()=>{
+  shuffleOnStart = !shuffleOnStart;
+  shuffleOnStartBtn.textContent = 'Shuffle on Start: ' + (shuffleOnStart? 'On' : 'Off');
+  persist();
+});
+
+exportWrong.addEventListener('click', ()=>{
+  const wrongCards = deck.filter(d=>d.wrong).map(d=> [escapeCsv(d.q), escapeCsv(d.a)].join(','));
+  if(!wrongCards.length){ alert('No wrong cards to export.'); return; }
+  downloadText('wrong_cards.csv', 'Question,Answer\n' + wrongCards.join('\n'));
+});
+
+exportAll.addEventListener('click', ()=>{
+  const all = deck.map(d=> [escapeCsv(d.q), escapeCsv(d.a)].join(','));
+  downloadText('all_cards.csv', 'Question,Answer\n' + all.join('\n'));
+});
+
+/* CSV parser - simple but robust for Q,A pairs.
+   Accepts comma or tab separated files. Splits on first separator found.
+*/
+function parseCSVorTSV(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length);
+  if(!lines.length) return [];
+  // detect delimiter by inspecting first non-empty line
+  let delim = ',';
+  if(lines[0].includes('\t')) delim = '\t';
+  const parsed = [];
+  for(const line of lines){
+    // split only on first delimiter to allow commas in answers
+    const idx = line.indexOf(delim);
+    if(idx === -1) continue;
+    const q = line.slice(0, idx).trim().replace(/^"|"$/g,'');
+    const a = line.slice(idx+1).trim().replace(/^"|"$/g,'');
+    if(q) parsed.push({q,a});
+  }
+  return parsed;
+}
+
+/* util */
+function escapeCsv(s){
+  if(s == null) s = '';
+  s = String(s).replace(/"/g,'""');
+  if(s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s}"`;
+  return s;
+}
+function downloadText(filename, txt){
+  const blob = new Blob([txt], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1500);
+}
+
+/* Initialization */
+(function init(){
+  // try load saved
+  if(!loadSaved()){
+    // start with default deck but don't auto-start until user clicks Start
+    deck = [];
+  } else {
+    // if saved deck exists, render it
+    renderState();
+  }
+  // UI initial state
+  autoAdvanceToggle.textContent = 'Auto-advance: ' + (autoAdvance? 'On' : 'Off');
+  shuffleOnStartBtn.textContent = 'Shuffle on Start: ' + (shuffleOnStart? 'On' : 'Off');
+  modeLabel.textContent = mode;
+  // if we loaded a saved deck and it has content, surface it
+  if(deck.length) {
+    buildOrder();
+    renderState();
+  } else {
+    // show default card preview
+    qEl.textContent = 'Quiz ready. Click Start to load the preloaded deck, or Load CSV/TSV to import your own.';
+  }
+})();
+</script>
+</body>
+</html>
