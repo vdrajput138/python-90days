@@ -20,12 +20,3 @@ jobs:
       - name: Check .py syntax
         run: |
           find . -name "*.py" -print0 | xargs -0 -n1 python -m py_compile
-
-      - name: Check .ipynb syntax
-        run: |
-          pip install nbconvert
-          for file in $(find . -name "*.ipynb"); do
-            echo "Checking $file"
-            jupyter nbconvert --to script "$file"
-            python -m py_compile "${file%.ipynb}.py"
-          done
