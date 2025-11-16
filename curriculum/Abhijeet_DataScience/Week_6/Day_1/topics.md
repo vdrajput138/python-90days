@@ -1,0 +1,6 @@
+# Day 1 — Topics
+
+- Feature pipelines
+- Serialization (pickle/joblib)
+- Simple model serving (FastAPI)
+- Basic deployment considerations

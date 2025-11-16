@@ -1,0 +1,3 @@
+# Day 3 — Topics
+
+- End-to-end ML project: data → model → evaluate → mini-deploy

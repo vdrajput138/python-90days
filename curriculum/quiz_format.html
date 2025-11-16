@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>CSV Quiz Runner</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root { --bg:#0f172a; --card:#0b1220; --accent:#06b6d4; --muted:#9aa4b2; --text:#e6eef6; }
+    body { background: linear-gradient(180deg,#071023 0%, #081827 100%); color:var(--text); font-family:Inter,Segoe UI,Roboto,Arial; margin:0; padding:24px; }
+    .wrap { max-width:900px; margin:0 auto; }
+    header { display:flex; gap:16px; align-items:center; margin-bottom:20px; }
+    h1 { margin:0; font-size:20px; }
+    .card { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.03); padding:18px; border-radius:12px; box-shadow:0 6px 18px rgba(2,6,23,0.6); }
+    .controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+    input[type=file] { color:var(--text); }
+    .meta { color:var(--muted); font-size:13px; }
+    .quiz-area { margin-top:16px; }
+    .question { font-size:18px; margin-bottom:12px; }
+    .options { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+    .option { display:flex; gap:10px; align-items:center; background:rgba(255,255,255,0.01); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.01); cursor:pointer; }
+    .option input { transform:scale(1.1); }
+    .nav { display:flex; gap:8px; }
+    button { background:var(--accent); color:#042027; border:0; padding:10px 12px; border-radius:8px; cursor:pointer; font-weight:600; }
+    button.secondary { background:transparent; color:var(--text); border:1px solid rgba(255,255,255,0.06); }
+    .small { font-size:13px; padding:8px 10px; }
+    .score { margin-top:14px; font-size:16px; }
+    .review { margin-top:14px; }
+    .review-item { background:rgba(0,0,0,0.25); padding:12px; border-radius:8px; margin-bottom:8px; }
+    .correct { color:#10b981; font-weight:700; }
+    .wrong { color:#f97316; font-weight:700; }
+    footer { margin-top:18px; color:var(--muted); font-size:13px; }
+    .hidden { display:none; }
+    .nav-index { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+    .nav-index button { background:transparent; border:1px solid rgba(255,255,255,0.03); color:var(--muted); padding:6px 8px; border-radius:6px; cursor:pointer; }
+    .nav-index button.active { border-color:var(--accent); color:var(--accent); background:rgba(6,182,212,0.06); }
+    .file-info { margin-left:auto; text-align:right; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>CSV Quiz Runner</h1>
+        <div class="meta">Upload a CSV in format: <code>question,option1,option2,option3,option4,answer</code></div>
+      </div>
+      <div class="file-info">
+        <div id="loadedCount" class="meta">No quiz loaded</div>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="controls">
+        <label class="small">
+          <input id="csvInput" type="file" accept=".csv" /> Upload CSV
+        </label>
+        <button id="shuffleBtn" class="secondary small">Shuffle Questions</button>
+        <button id="startBtn" class="small" disabled>Start Quiz</button>
+        <button id="resetBtn" class="secondary small" disabled>Reset</button>
+        <div style="margin-left:auto" class="meta">Tip: Save CSV from Excel/Sheets as UTF-8</div>
+      </div>
+
+      <div id="loader" class="meta">Choose a CSV file to load quiz questions.</div>
+
+      <div id="quizApp" class="quiz-area hidden">
+        <div id="qHeader" style="display:flex;align-items:center;gap:12px;">
+          <div class="meta" id="qIndex">Question 1 / 1</div>
+          <div id="qTag" class="meta"></div>
+        </div>
+
+        <div id="questionBox" class="card" style="margin-top:12px;">
+          <div class="question" id="questionText">Loading...</div>
+          <div id="options" class="options"></div>
+          <div class="nav">
+            <button id="prevBtn" class="secondary small">Previous</button>
+            <button id="nextBtn" class="secondary small">Next</button>
+            <button id="submitBtn" class="small">Submit Quiz</button>
+            <div style="margin-left:auto" class="meta" id="timeInfo"></div>
+          </div>
+
+          <div id="navIndex" class="nav-index" aria-hidden="true"></div>
+        </div>
+
+        <div id="resultArea" class="hidden">
+          <div class="score" id="scoreText"></div>
+          <div style="margin-top:10px;">
+            <button id="reviewBtn" class="secondary small">Review Answers</button>
+            <button id="restartBtn" class="small">Restart Quiz</button>
+          </div>
+
+          <div id="reviewList" class="review hidden"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div>Made for your CSV quizzes • Supports quoted CSV fields • Works offline in browser</div>
+    </footer>
+  </div>
+
+<script>
+/* CSV parser - basic RFC4180-ish parser supporting quoted commas/newlines */
+function parseCSV(text) {
+  const rows = [];
+  let cur = '';
+  let row = [];
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const nxt = text[i+1];
+    if (ch === '"') {
+      if (inQuotes && nxt === '"') {
+        cur += '"';
+        i++; // skip escaped quote
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+    if (ch === ',' && !inQuotes) {
+      row.push(cur);
+      cur = '';
+      continue;
+    }
+    if ((ch === '\n' || ch === '\r') && !inQuotes) {
+      // handle CRLF and CR or LF
+      if (ch === '\r' && nxt === '\n') { i++; } // skip LF in CRLF
+      row.push(cur);
+      rows.push(row);
+      row = [];
+      cur = '';
+      continue;
+    }
+    cur += ch;
+  }
+  // push remaining
+  if (cur !== '' || row.length) {
+    row.push(cur);
+    rows.push(row);
+  }
+  // filter out empty trailing rows
+  return rows.filter(r => r.length && !(r.length === 1 && r[0].trim() === ''));
+}
+
+function normalizeHeader(h) {
+  return h.trim().toLowerCase();
+}
+
+function loadCSVFromText(text) {
+  const rows = parseCSV(text);
+  if (!rows || rows.length === 0) throw new Error("No rows found in CSV");
+  // If first row looks like headers, detect them
+  const first = rows[0].map(cell => cell.trim().toLowerCase());
+  const headerNames = ["question","option1","option2","option3","option4","answer"];
+  let startRow = 0;
+  const isHeader = headerNames.every((hn, idx) => first[idx] && first[idx].includes(hn));
+  if (isHeader) startRow = 1;
+  // Convert rows to objects (guard missing columns)
+  const objs = [];
+  for (let i = startRow; i < rows.length; i++) {
+    const r = rows[i];
+    // pad to 6
+    while (r.length < 6) r.push('');
+    const obj = {
+      question: r[0] ? r[0].trim() : '',
+      options: [r[1] ? r[1].trim() : '', r[2] ? r[2].trim() : '', r[3] ? r[3].trim() : '', r[4] ? r[4].trim() : ''],
+      answer: (r[5] || '').trim()
+    };
+    // Ignore empty questions
+    if (obj.question) objs.push(obj);
+  }
+  return objs;
+}
+
+/* App logic */
+let QUESTIONS = [];
+let CUR = 0;
+let ANSWERS = []; // store chosen option indexes
+let started = false;
+
+const csvInput = document.getElementById('csvInput');
+const loader = document.getElementById('loader');
+const loadedCount = document.getElementById('loadedCount');
+const startBtn = document.getElementById('startBtn');
+const resetBtn = document.getElementById('resetBtn');
+const shuffleBtn = document.getElementById('shuffleBtn');
+
+const quizApp = document.getElementById('quizApp');
+const questionText = document.getElementById('questionText');
+const optionsBox = document.getElementById('options');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const submitBtn = document.getElementById('submitBtn');
+const qIndex = document.getElementById('qIndex');
+const navIndex = document.getElementById('navIndex');
+const resultArea = document.getElementById('resultArea');
+const scoreText = document.getElementById('scoreText');
+const reviewBtn = document.getElementById('reviewBtn');
+const reviewList = document.getElementById('reviewList');
+const restartBtn = document.getElementById('restartBtn');
+const loaderMeta = document.getElementById('loader');
+
+csvInput.addEventListener('change', (ev) => {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const text = e.target.result;
+      const objs = loadCSVFromText(text);
+      if (!objs.length) throw new Error("No valid questions found in CSV.");
+      QUESTIONS = objs;
+      ANSWERS = new Array(QUESTIONS.length).fill(null);
+      loadedCount.textContent = `${QUESTIONS.length} questions loaded`;
+      loaderMeta.textContent = `Loaded ${QUESTIONS.length} questions. Click "Start Quiz" to begin.`;
+      startBtn.disabled = false;
+      resetBtn.disabled = false;
+      quizApp.classList.add('hidden');
+      resultArea.classList.add('hidden');
+    } catch (err) {
+      alert("Error parsing CSV: " + err.message);
+      console.error(err);
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+});
+
+shuffleBtn.addEventListener('click', () => {
+  if (!QUESTIONS.length) return alert("Load a CSV first");
+  // Fisher-Yates shuffle preserving ANSWERS mapping (reset answers)
+  for (let i = QUESTIONS.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [QUESTIONS[i], QUESTIONS[j]] = [QUESTIONS[j], QUESTIONS[i]];
+  }
+  ANSWERS = new Array(QUESTIONS.length).fill(null);
+  loaderMeta.textContent = `Questions shuffled. Click Start Quiz.`;
+});
+
+startBtn.addEventListener('click', () => {
+  if (!QUESTIONS.length) return alert("Load a CSV first");
+  CUR = 0;
+  started = true;
+  quizApp.classList.remove('hidden');
+  resultArea.classList.add('hidden');
+  renderQuestion();
+  buildNavIndex();
+});
+
+resetBtn.addEventListener('click', () => {
+  if (!confirm("Reset loaded quiz? This clears answers.")) return;
+  QUESTIONS = [];
+  ANSWERS = [];
+  csvInput.value = '';
+  loadedCount.textContent = 'No quiz loaded';
+  loaderMeta.textContent = 'Choose a CSV file to load quiz questions.';
+  startBtn.disabled = true;
+  resetBtn.disabled = true;
+  quizApp.classList.add('hidden');
+});
+
+prevBtn.addEventListener('click', () => {
+  if (CUR > 0) { CUR--; renderQuestion(); }
+});
+nextBtn.addEventListener('click', () => {
+  if (CUR < QUESTIONS.length - 1) { CUR++; renderQuestion(); }
+});
+
+submitBtn.addEventListener('click', () => {
+  if (!confirm("Submit quiz? You won't be able to change answers after submission (but you can review).")) return;
+  gradeQuiz();
+});
+
+reviewBtn.addEventListener('click', () => {
+  showReview();
+});
+
+restartBtn.addEventListener('click', () => {
+  // clear answers and go back to first question
+  ANSWERS = new Array(QUESTIONS.length).fill(null);
+  resultArea.classList.add('hidden');
+  quizApp.classList.remove('hidden');
+  CUR = 0;
+  renderQuestion();
+});
+
+function buildNavIndex() {
+  navIndex.innerHTML = '';
+  for (let i = 0; i < QUESTIONS.length; i++) {
+    const b = document.createElement('button');
+    b.textContent = (i+1);
+    b.className = (i === CUR) ? 'active' : '';
+    b.addEventListener('click', () => { CUR = i; renderQuestion(); });
+    navIndex.appendChild(b);
+  }
+  navIndex.style.display = 'flex';
+}
+
+function renderQuestion() {
+  const q = QUESTIONS[CUR];
+  qIndex.textContent = `Question ${CUR+1} / ${QUESTIONS.length}`;
+  questionText.textContent = q.question;
+  optionsBox.innerHTML = '';
+  q.options.forEach((opt, idx) => {
+    const id = `opt-${CUR}-${idx}`;
+    const wrapper = document.createElement('label');
+    wrapper.className = 'option';
+    wrapper.htmlFor = id;
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'option';
+    radio.id = id;
+    radio.value = idx;
+    radio.checked = (ANSWERS[CUR] === idx);
+    radio.addEventListener('change', () => {
+      ANSWERS[CUR] = idx;
+      updateNavIndexActive();
+    });
+    const span = document.createElement('span');
+    span.textContent = opt || "(empty)";
+    wrapper.appendChild(radio);
+    wrapper.appendChild(span);
+    optionsBox.appendChild(wrapper);
+  });
+  updateNavIndexActive();
+}
+
+function updateNavIndexActive() {
+  // highlight nav index current & mark answered
+  const buttons = navIndex.querySelectorAll('button');
+  buttons.forEach((b, i) => {
+    b.classList.toggle('active', i === CUR);
+    b.style.opacity = ANSWERS[i] === null ? 0.6 : 1;
+  });
+}
+
+function gradeQuiz() {
+  let correct = 0;
+  const details = [];
+  QUESTIONS.forEach((q, i) => {
+    const chosenIndex = ANSWERS[i];
+    const chosen = (chosenIndex === null || chosenIndex === undefined) ? '' : q.options[chosenIndex];
+    const isCorrect = chosen.trim().toLowerCase() === q.answer.trim().toLowerCase();
+    if (isCorrect) correct++;
+    details.push({ q: q.question, chosen, correct: isCorrect, answer: q.answer });
+  });
+  const pct = Math.round((correct / QUESTIONS.length) * 100);
+  scoreText.textContent = `You scored ${correct} / ${QUESTIONS.length} (${pct}%)`;
+  quizApp.classList.add('hidden');
+  resultArea.classList.remove('hidden');
+  populateReview(details);
+}
+
+function populateReview(details) {
+  reviewList.innerHTML = '';
+  details.forEach((d, i) => {
+    const box = document.createElement('div');
+    box.className = 'review-item';
+    const qn = document.createElement('div');
+    qn.innerHTML = `<strong>Q${i+1}:</strong> ${d.q}`;
+    const chosen = document.createElement('div');
+    chosen.innerHTML = `<strong>Your answer:</strong> ${d.chosen || '<em>Not answered</em>'}`;
+    const ans = document.createElement('div');
+    ans.innerHTML = `<strong>Correct:</strong> ${d.answer}`;
+    if (d.correct) {
+      chosen.className = 'correct';
+    } else {
+      chosen.className = 'wrong';
+    }
+    box.appendChild(qn);
+    box.appendChild(chosen);
+    box.appendChild(ans);
+    reviewList.appendChild(box);
+  });
+}
+
+function showReview() {
+  reviewList.classList.remove('hidden');
+  reviewList.scrollIntoView({behavior:'smooth'});
+}
+
+/* keyboard nav */
+document.addEventListener('keydown', (e) => {
+  if (!started) return;
+  if (e.key === "ArrowRight") { if (CUR < QUESTIONS.length - 1) { CUR++; renderQuestion(); } }
+  if (e.key === "ArrowLeft") { if (CUR > 0) { CUR--; renderQuestion(); } }
+});
+</script>
+</body>
+</html>
