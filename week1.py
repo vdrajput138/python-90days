@@ -14,14 +14,14 @@ from pathlib import Path
 # -------------------------------------------------------------------
 # Configuration
 # -------------------------------------------------------------------
-WEEK_NAME   = "week_01_basics"
-START_DATE  = date(2025, 11, 12)           # Wednesday Nov 12 2025
-DAYS_ACTIVE = 6                            # 6 days / week (Sunday off)
+WEEK_NAME = "week_01_basics"
+START_DATE = date(2025, 11, 12)  # Wednesday Nov 12 2025
+DAYS_ACTIVE = 6  # 6 days / week (Sunday off)
 ROLES = {
-    "aakash_data_science" : "Data Science",
+    "aakash_data_science": "Data Science",
     "abhijit_data_science": "Data Science",
     "sid_data_engineering": "Data Engineering",
-    "viru_qa"             : "QA Automation"
+    "viru_qa": "QA Automation",
 }
 TOPICS = [
     "Python Setup + Syntax",
@@ -29,13 +29,14 @@ TOPICS = [
     "Input/Output & Operators",
     "Conditional Statements",
     "Loops (for/while)",
-    "Practice & Mini Quiz"
+    "Practice & Mini Quiz",
 ]
 
 # -------------------------------------------------------------------
 ROOT = Path(__file__).resolve().parent
 PROBLEMS_DIR = ROOT / "problems" / WEEK_NAME
 TRACKER_FILE = ROOT / "tracker.md"
+
 
 # -------------------------------------------------------------------
 def make_day_folder(day_num: int, topic: str, current_date: date):
@@ -49,7 +50,8 @@ def make_day_folder(day_num: int, topic: str, current_date: date):
 
         # Markdown problem list
         md_file = role_path / "problem_list.md"
-        md_file.write_text(f"""# 📘 Day {day_num} – {topic}
+        md_file.write_text(
+            f"""# 📘 Day {day_num} – {topic}
 **Date:** {current_date.strftime('%b %d, %Y')} 
 **Track:** {ROLES[role]}
 
@@ -78,11 +80,13 @@ def make_day_folder(day_num: int, topic: str, current_date: date):
 | Abhijit | [ ] |
 | Sid | [ ] |
 | Viru | [ ] |
-""")
+"""
+        )
 
         # Empty notebook template
         nb_file = role_path / f"day_{day_num:02d}_{role.split('_')[0]}.ipynb"
-        nb_file.write_text("""{
+        nb_file.write_text(
+            """{
  "cells": [
   {"cell_type": "markdown", "metadata": {},
    "source": ["# Day {day_num} – {topic}\\n",
@@ -93,13 +97,21 @@ def make_day_folder(day_num: int, topic: str, current_date: date):
  "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}},
  "nbformat": 4,
  "nbformat_minor": 5
-}""".replace("{day_num}", str(day_num)).replace("{topic}", topic))
+}""".replace(
+                "{day_num}", str(day_num)
+            ).replace(
+                "{topic}", topic
+            )
+        )
+
 
 # -------------------------------------------------------------------
 def update_tracker():
     """Append this week to tracker.md or create new one."""
-    header = "| Day | Date | Topic | Aakash | Abhijit | Sid | Viru |\n" \
-             "|:--|:--|:--|:--|:--|:--|:--|\n"
+    header = (
+        "| Day | Date | Topic | Aakash | Abhijit | Sid | Viru |\n"
+        "|:--|:--|:--|:--|:--|:--|:--|\n"
+    )
     lines = []
     cur_date = START_DATE
     day = 1
@@ -107,7 +119,9 @@ def update_tracker():
         if cur_date.weekday() == 6:  # Sunday
             cur_date += timedelta(days=1)
             continue
-        lines.append(f"| {day} | {cur_date.strftime('%b %d')} | {TOPICS[day-1]} | [ ] | [ ] | [ ] | [ ] |\n")
+        lines.append(
+            f"| {day} | {cur_date.strftime('%b %d')} | {TOPICS[day-1]} | [ ] | [ ] | [ ] | [ ] |\n"
+        )
         cur_date += timedelta(days=1)
         day += 1
 
@@ -117,20 +131,22 @@ def update_tracker():
     else:
         TRACKER_FILE.write_text("# Team Python 90-Day Tracker\n" + new_block)
 
+
 # -------------------------------------------------------------------
 def main():
     print("🚀 Creating Week 01 – Python Basics structure...")
     cur_date = START_DATE
     day_num = 1
     while day_num <= DAYS_ACTIVE:
-        if cur_date.weekday() == 6:   # skip Sunday
+        if cur_date.weekday() == 6:  # skip Sunday
             cur_date += timedelta(days=1)
             continue
-        make_day_folder(day_num, TOPICS[day_num-1], cur_date)
+        make_day_folder(day_num, TOPICS[day_num - 1], cur_date)
         cur_date += timedelta(days=1)
         day_num += 1
     update_tracker()
     print(f"✅ Week 01 created successfully at {PROBLEMS_DIR}")
+
 
 if __name__ == "__main__":
     main()

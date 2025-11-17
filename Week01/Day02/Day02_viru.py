@@ -2,12 +2,13 @@
 1. Create three variables: one int, one float, one string; print each and their types.
 
 """
+
 int_val = 30
 float_val = 30.30
 string_val = "30.30.30"
-print("Type for "+ str(int_val)+ " is -" + str(type(int_val).__name__))
-print("Type for "+ str(float_val)+ " is - "+ str(type(float_val).__name__))
-print("Type for "+ string_val + " is - " + str(type(string_val).__name__))
+print("Type for " + str(int_val) + " is -" + str(type(int_val).__name__))
+print("Type for " + str(float_val) + " is - " + str(type(float_val).__name__))
+print("Type for " + string_val + " is - " + str(type(string_val).__name__))
 
 
 """
@@ -47,7 +48,7 @@ else:
 4. Write a script that takes two numeric inputs from the user, performs all arithmetic operators (+,-,,/,//, %,*), and prints formatted results.
 
 """
-x,y = input("Please enter 2 numeric value: ").split()
+x, y = input("Please enter 2 numeric value: ").split()
 x = int(x)
 y = int(y)
 print("Arithmatic operation for your provided inputs are as follows: ")
@@ -63,7 +64,10 @@ print(f"The division is : {x/y}")
 birth_year = int(input("Please enter the birth year: "))
 current_year = int(input("Please enter the current year: "))
 total_years = current_year - birth_year
-print("Total seconds you have lived till this years - "+ str(total_years * 365 * 24 * 60 * 60))
+print(
+    "Total seconds you have lived till this years - "
+    + str(total_years * 365 * 24 * 60 * 60)
+)
 
 
 """
@@ -72,4 +76,4 @@ print("Total seconds you have lived till this years - "+ str(total_years * 365 *
 
 print("This is about converting Kilometers to meters")
 km_value = int(input("Please enter value for Kilometers - "))
-print("The converted value of kilometers into meters is - "+ str(km_value * 1000))
+print("The converted value of kilometers into meters is - " + str(km_value * 1000))

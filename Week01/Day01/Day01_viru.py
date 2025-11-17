@@ -1,4 +1,5 @@
 import sys
+
 """
 1. Write a script that prints “Hello, World!”.
 
@@ -22,7 +23,7 @@ print(sys.version)
 4. Write a Python script that asks for user input (your name) and then prints a greeting.
 """
 var_name = input("Hey, may I know your name?:")
-print("Hey, "+ var_name + "! Welcome to the new activity.")
+print("Hey, " + var_name + "! Welcome to the new activity.")
 
 """
 5. Create a small folder structure for a “hello” project: hello/, have a module main.py, set up _init_.py, run the module.

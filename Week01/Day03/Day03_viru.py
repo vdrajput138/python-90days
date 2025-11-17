@@ -3,7 +3,9 @@
 """
 
 value_to_extract = input("Please provide the string value: ")
-print(f"First 3 characters of the string are : {value_to_extract[:3]} and last 3 characters of the string are : {value_to_extract[-3:]}")
+print(
+    f"First 3 characters of the string are : {value_to_extract[:3]} and last 3 characters of the string are : {value_to_extract[-3:]}"
+)
 
 
 """
@@ -23,17 +25,21 @@ print(f"The uppercase is {sample_word.upper()}")
 """
 
 to_be_reverse = input("Please enter the string to reverse: ")
-print("Reverse string of the provided string is "+ to_be_reverse[::-1])
+print("Reverse string of the provided string is " + to_be_reverse[::-1])
 
 
 """
 4. Create a function that checks if a string is a palindrome (reads same forwards and backwards)
 """
+
+
 def verifyPalindrome(word):
     return word == word[::-1]
 
 
-to_be_verify_palindrome = input("Please enter the string value to verify about palindrome: ")
+to_be_verify_palindrome = input(
+    "Please enter the string value to verify about palindrome: "
+)
 result = verifyPalindrome(to_be_verify_palindrome)
 
 if result:
@@ -45,7 +51,7 @@ else:
 5. Write a program that removes all spaces from a string and replaces them with underscores
 """
 given_string = input("Please mention the sentense or a multiple words: ")
-print("updated version of the given string is : "+ given_string.replace(" ","_"))
+print("updated version of the given string is : " + given_string.replace(" ", "_"))
 
 
 """
